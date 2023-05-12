@@ -1,0 +1,15 @@
+{
+  "type": "BasicJvmOnlyMod",
+  "dependencies": [
+    {
+      "type": "Project",
+      "cfg": "api",
+      "path": ":k:lang"
+    },
+    {
+      "type": "Project",
+      "cfg": "api",
+      "path": ":k:shell"
+    }
+  ]
+}
