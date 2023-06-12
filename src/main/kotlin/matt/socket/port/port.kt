@@ -1,7 +1,7 @@
 package matt.socket.port
 
 import matt.log.tab
-import matt.model.code.valjson.ValJson
+import matt.model.code.valjson.PortRegistry
 import matt.shell.ExecReturner
 import matt.shell.ShellResultHandler
 import matt.shell.ShellVerbosity
@@ -15,16 +15,27 @@ import java.net.ServerSocket
 import java.net.Socket
 import kotlin.system.exitProcess
 
+
+/*TODO: if it fails because this function was executed in parallel elsewhere and got the same port, make it retry.*/
+fun serverSocketWithFirstUnusedPort(): Pair<ServerSocket, Port> {
+    val myPort = PortRegistry.unRegisteredPortPool.asSequence().map {
+        Port(it)
+    }.first {
+        it.isUnUsed()
+    }
+    return myPort.serverSocket() to myPort
+}
+
 data class Port(val port: Int) {
 
     companion object {
+
+
         private val SHELL by lazy {
             ExecReturner.SILENT.copy(resultHandler = ShellResultHandler(nonZeroOkIf = { it.output.isBlank() }))
         }
         val myPid by lazy { Pid(ProcessHandle.current().pid()) }
     }
-
-    constructor(name: String) : this(ValJson.Port[name]!!)
 
     fun isUsed() = processes().isNotEmpty()
     fun isUnUsed() = !isUsed()
