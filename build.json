@@ -5,6 +5,11 @@
       "type": "Project",
       "cfg": "api",
       "path": ":k:shell"
+    },
+    {
+      "type": "Lib",
+      "cfg": "api",
+      "key": "kotlinx-coroutines"
     }
   ]
 }
