@@ -61,6 +61,7 @@ open class InterAppClient(val port: Port) : InterAppThing() {
                 socket.socketReader(encoding = ENCODING).readSectionBeforeTimeout(2000.milliseconds)
         } catch (e: ConnectException) {
             println(e)
+            e.printStackTrace()
             return@runBlocking null
         }
         if (andClose) close()
