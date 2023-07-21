@@ -3,11 +3,13 @@ package matt.socket.client
 import kotlinx.coroutines.runBlocking
 import matt.model.data.file.FilePath
 import matt.model.data.message.ACTIVATE
-import matt.model.data.message.ARE_YOU_RUNNING
 import matt.model.data.message.EXIT
 import matt.model.data.message.Go
 import matt.model.data.message.InterAppMessage
 import matt.model.data.message.Open
+import matt.model.data.message.PING
+import matt.model.data.message.PONG
+import matt.shell.context.ShellExecutionContext
 import matt.socket.port.Port
 import matt.socket.reader.socketReader
 import matt.socket.thing.InterAppThing
@@ -19,12 +21,21 @@ import kotlin.time.Duration.Companion.milliseconds
 
 open class InterAppClient(val port: Port) : InterAppThing() {
 
-    val serverSeemsToBeOpen get() = port.processes().isNotEmpty()
+    context(ShellExecutionContext)
+    fun serverSeemsToBeOpen() = port.processes().isNotEmpty()
 
     fun receive(message: InterAppMessage) = send(message, andReceive = true)
 
     fun activate() = send(ACTIVATE, andReceive = false)
-    fun areYouRunning() = receive(ARE_YOU_RUNNING)
+    fun areYouRunning() = receive(PING)
+    fun isReceptive(): Boolean {
+        val response = receive(PING)
+        if (response == null) return false
+        if (response !is PONG) {
+            error("weird response to ping: $response")
+        }
+        return true
+    }
 
     fun exit() = send(EXIT, andReceive = false)
     fun go(value: String) = send(Go(value), andReceive = false)

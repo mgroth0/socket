@@ -2,10 +2,11 @@ package matt.socket.port
 
 import matt.log.tab
 import matt.model.code.valjson.PortRegistry
-import matt.shell.ExecReturner
 import matt.shell.ShellResultHandler
 import matt.shell.ShellVerbosity
 import matt.shell.ShellVerbosity.Companion.SILENT
+import matt.shell.context.ShellExecutionContext
+import matt.shell.execReturners
 import matt.shell.proc.Pid
 import matt.shell.proc.ProcessKillSignal.SIGKILL
 import matt.socket.lsof.lsof
@@ -16,6 +17,7 @@ import java.net.Socket
 import kotlin.system.exitProcess
 
 
+context(ShellExecutionContext)
 /*TODO: if it fails because this function was executed in parallel elsewhere and got the same port, make it retry.*/
 fun serverSocketWithFirstUnusedPort(): Pair<ServerSocket, Port> {
     val myPort = PortRegistry.unRegisteredPortPool.asSequence().map {
@@ -31,19 +33,26 @@ data class Port(val port: Int) {
     companion object {
 
 
-        private val SHELL by lazy {
-            ExecReturner.SILENT.copy(resultHandler = ShellResultHandler(nonZeroOkIf = { it.output.isBlank() }))
-        }
+        context(ShellExecutionContext)
+        private fun shell() =
+            execReturners.silent.copy(resultHandler = ShellResultHandler(nonZeroOkIf = { it.output.isBlank() }))
+
         val myPid by lazy { Pid(ProcessHandle.current().pid()) }
     }
 
+    context(ShellExecutionContext)
     fun isUsed() = processes().isNotEmpty()
+
+    context(ShellExecutionContext)
     fun isUnUsed() = !isUsed()
-    fun processes(verbosity: ShellVerbosity = SILENT) = SHELL.copy(verbosity = verbosity).lsof(port)
+
+    context(ShellExecutionContext)
+    fun processes(verbosity: ShellVerbosity = SILENT) = shell().copy(verbosity = verbosity).lsof(port)
         .split("\\s+".toRegex())
         .filter { it.isNotBlank() }
         .map { Pid(it.toLong()) }
 
+    context(ShellExecutionContext)
     fun killAllProcesses(verbosity: ShellVerbosity = SILENT) {
         val toKill = processes(verbosity = verbosity)
         toKill.forEach {
@@ -55,6 +64,7 @@ data class Port(val port: Int) {
         if (toKill.isNotEmpty()) Thread.sleep(100) /*from experience, it seems I need to wait a bit for the port to become available*/
     }
 
+    context(ShellExecutionContext)
     fun serverSocket() = try {
         ServerSocket(port)
     } catch (e: BindException) {
