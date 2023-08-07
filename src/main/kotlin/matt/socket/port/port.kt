@@ -1,7 +1,7 @@
 package matt.socket.port
 
 import matt.log.tab
-import matt.model.code.valjson.PortRegistry
+import matt.model.code.vals.portreg.PortRegistry
 import matt.shell.ShellResultHandler
 import matt.shell.ShellVerbosity
 import matt.shell.ShellVerbosity.Companion.SILENT

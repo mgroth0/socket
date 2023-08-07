@@ -1,15 +1,20 @@
 {
-  "type": "BasicJvmOnlyMod",
-  "dependencies": [
-    {
-      "type": "Project",
-      "cfg": "api",
-      "path": ":k:shell"
-    },
-    {
-      "type": "Lib",
-      "cfg": "api",
-      "key": "kotlinx-coroutines"
-    }
-  ]
+    "type": "BasicJvmOnlyMod",
+    "dependencies": [
+        {
+            "type": "Project",
+            "cfg": "api",
+            "path": ":k:shell"
+        },
+        {
+            "type": "Lib",
+            "cfg": "api",
+            "key": "kotlinx-coroutines"
+        },
+        {
+            "type": "Project",
+            "cfg": "testImplementation",
+            "path": ":k:test"
+        }
+    ]
 }
