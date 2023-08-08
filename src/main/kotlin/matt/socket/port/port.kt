@@ -20,10 +20,14 @@ import kotlin.system.exitProcess
 context(ShellExecutionContext)
 /*TODO: if it fails because this function was executed in parallel elsewhere and got the same port, make it retry.*/
 fun serverSocketWithFirstUnusedPort(): Pair<ServerSocket, Port> {
+
+    /*more performant and stable to do one lsof command than to do one per possible port*/
+    val usedPorts = execReturners.silent.lsof.allPidsUsingAllPorts().keys
+
     val myPort = PortRegistry.unRegisteredPortPool.asSequence().map {
         Port(it)
     }.first {
-        it.isUnUsed()
+        it !in usedPorts
     }
     return myPort.serverSocket() to myPort
 }
@@ -47,10 +51,7 @@ data class Port(val port: Int) {
     fun isUnUsed() = !isUsed()
 
     context(ShellExecutionContext)
-    fun processes(verbosity: ShellVerbosity = SILENT) = shell().copy(verbosity = verbosity).lsof(port)
-        .split("\\s+".toRegex())
-        .filter { it.isNotBlank() }
-        .map { Pid(it.toLong()) }
+    fun processes(verbosity: ShellVerbosity = SILENT) = shell().copy(verbosity = verbosity).lsof.pidsUsingPort(port)
 
     context(ShellExecutionContext)
     fun killAllProcesses(verbosity: ShellVerbosity = SILENT) {
@@ -82,11 +83,9 @@ data class Port(val port: Int) {
     private var _clientSocket: Socket? = null
 
     @Synchronized
-    fun clientSocket() = _clientSocket
-        ?.takeIf { it.isOpen }
-        ?: Socket("localhost", port).also {
-            _clientSocket = it
-        }
+    fun clientSocket() = _clientSocket?.takeIf { it.isOpen } ?: Socket("localhost", port).also {
+        _clientSocket = it
+    }
 
     @Synchronized
     fun closeClientSocket() {
