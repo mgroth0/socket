@@ -22,18 +22,27 @@ class ListOfOpenFilesCommand(shell: Shell<String>) : ControlledShellProgram<Stri
         TcpPort(port)
     ).map { Pid(it.pid.toLong()) }
 
-    fun allPidsUsingAllPorts() = programmaticList(
-        AllLocalHostTCPAddresses
-    ).groupBy {
-        Port(it.file!!.serverPort)
-    }.mapValues { it.value.map { Pid(it.pid.toLong()) } }
+    fun allPidsUsingAllPorts() = run {
+        try {
+            programmaticList(
+                AllLocalHostTCPAddresses
+            ).groupBy {
+                Port(it.file!!.serverPort)
+            }.mapValues { it.value.map { Pid(it.pid.toLong()) } }
+        } catch (e: LsofParseException) {
+            println("Doing a full lsof for debugging:\n\n${this()}\n\n")
+            throw e
+        }
+    }
 
+    operator fun invoke() = sendCommand()
 
     private fun programmaticList(
         filter: LsofFilter? = null,
 
         ) = sendCommand(
-        "-n", /*inhibits network numbers from being converted to names. Required for programmatically getting the port number of some ports. Also supposedly improves performance.*/
+        "-n", /*inhibits network numbers from being converted to names. Also supposedly improves performance.*/
+        "-P" /*This option inhibits the conversion of port numbers to port names for network files. Inhibiting the conversion may make lsof run a little faster. It is also useful when port name lookup is not working properly.*/,
         "-F",
         listOf(
             'n'
