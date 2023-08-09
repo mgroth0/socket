@@ -17,6 +17,7 @@ class ListOfOpenFilesCommand(shell: Shell<String>) : ControlledShellProgram<Stri
     shell = shell, program = "/usr/sbin/lsof"
 ) {
 
+
     fun pidsUsingPort(port: Int) = programmaticList(
         TcpPort(port)
     ).map { Pid(it.pid.toLong()) }
@@ -29,8 +30,14 @@ class ListOfOpenFilesCommand(shell: Shell<String>) : ControlledShellProgram<Stri
 
 
     private fun programmaticList(
-        filter: LsofFilter? = null
-    ) = sendCommand("-F", listOf('n').joinToString(separator = ""), * optArray(filter) { args }).lines()
+        filter: LsofFilter? = null,
+
+        ) = sendCommand(
+        "-n", /*inhibits network numbers from being converted to names. Required for programmatically getting the port number of some ports. Also supposedly improves performance.*/
+        "-F",
+        listOf(
+            'n'
+        ).joinToString(separator = ""), * optArray(filter) { args }).lines()
         .filterNotBlank().iterator().run {
 
             val result = mutableListOf<OpenedFile>()
@@ -40,18 +47,18 @@ class ListOfOpenFilesCommand(shell: Shell<String>) : ControlledShellProgram<Stri
                 val line = next()
                 val value = line.substring(1)
                 when (val c = line.first()) {
-                    'p'  -> {
+                    'p' -> {
                         building?.go { result.add(it) }
                         building = OpenedFile(
                             pid = value.toInt()
                         )
                     }
 
-                    'f'  -> {
+                    'f' -> {
                         building = building!!.copy(fileDescriptor = value)
                     }
 
-                    'n'  -> {
+                    'n' -> {
                         building = building!!.copy(
                             file = when {
                                 "->" in value -> ClientSocketFile(value)
@@ -94,15 +101,35 @@ sealed interface FileNameCommentInternetAddress {
 @JvmInline
 value class ServerSocketFile(val raw: String) : FileNameCommentInternetAddress {
     override val serverHost get() = raw.substringBefore(":")
-    override val serverPort get() = raw.substringAfter(":").toInt()
+    override val serverPort
+        get() = try {
+            raw.substringAfter(":").toInt()
+        } catch (e: NumberFormatException) {
+            throw LsofParseException("Exception parsing ServerSocketFile.serverPort with raw arg: $raw", e)
+        }
 }
+
+class LsofParseException(
+    message: String,
+    cause: Exception
+) : Exception(message, cause)
 
 @JvmInline
 value class ClientSocketFile(val raw: String) : FileNameCommentInternetAddress {
     val clientHost get() = raw.substringBefore(":")
-    val clientPort get() = raw.substringAfter(":").substringBefore("-").toInt()
+    val clientPort
+        get() = try {
+            raw.substringAfter(":").substringBefore("-").toInt()
+        } catch (e: NumberFormatException) {
+            throw LsofParseException("Exception parsing ClientSocketFile.clientPort with raw arg: $raw", e)
+        }
     override val serverHost get() = raw.substringAfter(">").substringBefore(":")
-    override val serverPort get() = raw.substringAfter(":").substringAfter(":").toInt()
+    override val serverPort
+        get() = try {
+            raw.substringAfter(":").substringAfter(":").toInt()
+        } catch (e: NumberFormatException) {
+            throw LsofParseException("Exception parsing ClientSocketFile.serverPort with raw arg: $raw", e)
+        }
 }
 
 data class OpenedFile(

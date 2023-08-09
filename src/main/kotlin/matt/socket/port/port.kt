@@ -18,11 +18,12 @@ import kotlin.system.exitProcess
 
 
 context(ShellExecutionContext)
-/*TODO: if it fails because this function was executed in parallel elsewhere and got the same port, make it retry.*/
+        /*TODO: if it fails because this function was executed in parallel elsewhere and got the same port, make it retry.*/
 fun serverSocketWithFirstUnusedPort(): Pair<ServerSocket, Port> {
 
     /*more performant and stable to do one lsof command than to do one per possible port*/
     val usedPorts = execReturners.silent.lsof.allPidsUsingAllPorts().keys
+
 
     val myPort = PortRegistry.unRegisteredPortPool.asSequence().map {
         Port(it)
