@@ -4,11 +4,29 @@ import matt.lang.If
 import matt.lang.anno.SeeURL
 import matt.lang.go
 import matt.lang.optArray
+import matt.model.code.vals.portreg.PortRegistry
 import matt.prim.str.filterNotBlank
 import matt.shell.ControlledShellProgram
 import matt.shell.Shell
+import matt.shell.context.ShellExecutionContext
+import matt.shell.execReturners
 import matt.shell.proc.Pid
 import matt.socket.port.Port
+
+context(ShellExecutionContext)
+fun firstUnusedPort(): Port {
+
+    /*more performant and stable to do one lsof command than to do one per possible port*/
+    val usedPorts = execReturners.silent.lsof.allPidsUsingAllPorts().keys
+
+
+    val myPort = PortRegistry.unRegisteredPortPool.asSequence().map {
+        Port(it)
+    }.first {
+        it !in usedPorts
+    }
+    return myPort
+}
 
 val Shell<String>.lsof get() = ListOfOpenFilesCommand(this)
 

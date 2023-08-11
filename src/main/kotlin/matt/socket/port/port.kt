@@ -1,7 +1,6 @@
 package matt.socket.port
 
 import matt.log.tab
-import matt.model.code.vals.portreg.PortRegistry
 import matt.shell.ShellResultHandler
 import matt.shell.ShellVerbosity
 import matt.shell.ShellVerbosity.Companion.SILENT
@@ -9,6 +8,7 @@ import matt.shell.context.ShellExecutionContext
 import matt.shell.execReturners
 import matt.shell.proc.Pid
 import matt.shell.proc.ProcessKillSignal.SIGKILL
+import matt.socket.lsof.firstUnusedPort
 import matt.socket.lsof.lsof
 import matt.socket.socket.isOpen
 import java.net.BindException
@@ -20,17 +20,8 @@ import kotlin.system.exitProcess
 context(ShellExecutionContext)
         /*TODO: if it fails because this function was executed in parallel elsewhere and got the same port, make it retry.*/
 fun serverSocketWithFirstUnusedPort(): Pair<ServerSocket, Port> {
-
-    /*more performant and stable to do one lsof command than to do one per possible port*/
-    val usedPorts = execReturners.silent.lsof.allPidsUsingAllPorts().keys
-
-
-    val myPort = PortRegistry.unRegisteredPortPool.asSequence().map {
-        Port(it)
-    }.first {
-        it !in usedPorts
-    }
-    return myPort.serverSocket() to myPort
+    val port = firstUnusedPort()
+    return port.serverSocket() to port
 }
 
 data class Port(val port: Int) {
