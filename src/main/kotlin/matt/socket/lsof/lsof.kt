@@ -125,12 +125,40 @@ sealed interface FileNameCommentInternetAddress {
     val serverPort: Int
 }
 
+private object InternetAddressParser {
+    fun parse(raw: String): AddressAndPort {
+        val inBrackets = raw.startsWith("[")
+        val colon: Int
+        val rawAddress = if (inBrackets) {
+            val endBracket = raw.indexOf("]")
+            colon = endBracket + 1
+            raw.substring(1..<endBracket)
+        } else {
+            colon = raw.indexOf(":")
+            raw.substring(0..<colon)
+        }
+        val remaining = raw.substring(colon)
+        val dash = remaining.indexOf("-")
+        val port = if (dash == -1) {
+            remaining.substring(1).toInt()
+        } else {
+            remaining.substring(1, dash).toInt()
+        }
+        return AddressAndPort(rawAddress, port)
+    }
+}
+
+data class AddressAndPort(
+    val address: String,
+    val port: Int
+)
+
 @JvmInline
 value class ServerSocketFile(val raw: String) : FileNameCommentInternetAddress {
-    override val serverHost get() = raw.substringBefore(":")
+    override val serverHost get() = InternetAddressParser.parse(raw).address
     override val serverPort
         get() = try {
-            raw.substringAfter(":").toInt()
+            InternetAddressParser.parse(raw).port
         } catch (e: NumberFormatException) {
             throw LsofParseException("Exception parsing ServerSocketFile.serverPort with raw arg: $raw", e)
         }
@@ -143,17 +171,17 @@ class LsofParseException(
 
 @JvmInline
 value class ClientSocketFile(val raw: String) : FileNameCommentInternetAddress {
-    val clientHost get() = raw.substringBefore(":")
+    val clientHost get() = InternetAddressParser.parse(raw).address
     val clientPort
         get() = try {
-            raw.substringAfter(":").substringBefore("-").toInt()
+            InternetAddressParser.parse(raw.substringBefore("-")).port
         } catch (e: NumberFormatException) {
             throw LsofParseException("Exception parsing ClientSocketFile.clientPort with raw arg: $raw", e)
         }
-    override val serverHost get() = raw.substringAfter(">").substringBefore(":")
+    override val serverHost get() = InternetAddressParser.parse(raw.substringAfter(">")).address
     override val serverPort
         get() = try {
-            raw.substringAfter(":").substringAfter(":").toInt()
+            InternetAddressParser.parse(raw.substringAfter(">")).port
         } catch (e: NumberFormatException) {
             throw LsofParseException("Exception parsing ClientSocketFile.serverPort with raw arg: $raw", e)
         }
