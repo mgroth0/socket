@@ -13,11 +13,13 @@ import matt.shell.execReturners
 import matt.shell.proc.Pid
 import matt.socket.port.Port
 
+
+
 context(ShellExecutionContext)
 fun firstUnusedPort(): Port {
 
     /*more performant and stable to do one lsof command than to do one per possible port*/
-    val usedPorts = execReturners.silent.lsof.allPidsUsingAllPorts().keys
+    val usedPorts = usedPorts()
 
 
     val myPort = PortRegistry.unRegisteredPortPool.asSequence().map {
@@ -27,6 +29,9 @@ fun firstUnusedPort(): Port {
     }
     return myPort
 }
+
+context(ShellExecutionContext)
+fun usedPorts() = execReturners.silent.lsof.allPidsUsingAllPorts().keys
 
 val Shell<String>.lsof get() = ListOfOpenFilesCommand(this)
 

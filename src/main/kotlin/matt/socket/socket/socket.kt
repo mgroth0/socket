@@ -19,7 +19,12 @@ fun ServerSocket.acceptOrTimeout(): Socket? {
 }
 
 fun ServerSocket.acceptWithTimeout(timeout: Duration): Socket? {
-    soTimeout = timeout.inWholeMilliseconds.toInt()
+    soTimeout = if (timeout == Duration.INFINITE) {
+        0
+    } else {
+        timeout.inWholeMilliseconds.toInt()
+    }
+
     return acceptOrTimeout()
 }
 
