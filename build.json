@@ -1,30 +1,31 @@
 {
-  "type": "BasicJvmOnlyMod",
+  "type": "MultiPlatformModule",
   "dependencies": [
     {
       "type": "Project",
-      "cfg": "api",
+      "cfg": "jvmMainApi",
       "path": ":k:shell"
     },
     {
       "type": "Lib",
-      "cfg": "api",
+      "cfg": "jvmMainApi",
       "key": "kotlinx-io"
     },
     {
       "type": "Lib",
-      "cfg": "implementation",
+      "cfg": "jvmMainImplementation",
       "key": "ktorNetwork"
     },
     {
       "type": "Lib",
-      "cfg": "api",
+      "cfg": "jvmMainApi",
       "key": "kotlinx-coroutines"
     },
     {
       "type": "Project",
-      "cfg": "testImplementation",
+      "cfg": "jvmTestImplementation",
       "path": ":k:test"
     }
-  ]
+  ],
+  "jvm": {}
 }

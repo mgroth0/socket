@@ -1,7 +1,7 @@
 package matt.socket.client
 
 import kotlinx.coroutines.runBlocking
-import matt.model.data.file.FilePath
+import matt.lang.model.file.FilePath
 import matt.model.data.message.ACTIVATE
 import matt.model.data.message.EXIT
 import matt.model.data.message.Go
