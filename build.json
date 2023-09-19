@@ -17,11 +17,6 @@
       "key": "ktorNetwork"
     },
     {
-      "type": "Lib",
-      "cfg": "jvmMainApi",
-      "key": "kotlinx-coroutines"
-    },
-    {
       "type": "Project",
       "cfg": "jvmTestImplementation",
       "path": ":k:test"

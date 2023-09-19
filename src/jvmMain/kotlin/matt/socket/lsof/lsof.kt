@@ -8,14 +8,13 @@ import matt.model.code.vals.portreg.PortRegistry
 import matt.prim.str.filterNotBlank
 import matt.shell.ControlledShellProgram
 import matt.shell.Shell
-import matt.shell.context.ShellExecutionContext
+import matt.shell.context.ReapingShellExecutionContext
 import matt.shell.execReturners
 import matt.shell.proc.Pid
 import matt.socket.port.Port
 
 
-
-context(ShellExecutionContext)
+context(ReapingShellExecutionContext)
 fun firstUnusedPort(): Port {
 
     /*more performant and stable to do one lsof command than to do one per possible port*/
@@ -30,7 +29,7 @@ fun firstUnusedPort(): Port {
     return myPort
 }
 
-context(ShellExecutionContext)
+context(ReapingShellExecutionContext)
 fun usedPorts() = execReturners.silent.lsof.allPidsUsingAllPorts().keys
 
 val Shell<String>.lsof get() = ListOfOpenFilesCommand(this)

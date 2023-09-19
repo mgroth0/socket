@@ -4,7 +4,7 @@ import matt.log.tab
 import matt.shell.ShellResultHandler
 import matt.shell.ShellVerbosity
 import matt.shell.ShellVerbosity.Companion.SILENT
-import matt.shell.context.ShellExecutionContext
+import matt.shell.context.ReapingShellExecutionContext
 import matt.shell.execReturners
 import matt.shell.proc.Pid
 import matt.shell.proc.ProcessKillSignal.SIGKILL
@@ -17,7 +17,7 @@ import java.net.Socket
 import kotlin.system.exitProcess
 
 
-context(ShellExecutionContext)
+context(ReapingShellExecutionContext)
         /*TODO: if it fails because this function was executed in parallel elsewhere and got the same port, make it retry.*/
 fun serverSocketWithFirstUnusedPort(): Pair<ServerSocket, Port> {
     val port = firstUnusedPort()
@@ -29,23 +29,23 @@ data class Port(val port: Int) {
     companion object {
 
 
-        context(ShellExecutionContext)
+        context(ReapingShellExecutionContext)
         private fun shell() =
             execReturners.silent.copy(resultHandler = ShellResultHandler(nonZeroOkIf = { it.output.isBlank() }))
 
         val myPid by lazy { Pid(ProcessHandle.current().pid()) }
     }
 
-    context(ShellExecutionContext)
+    context(ReapingShellExecutionContext)
     fun isUsed() = processes().isNotEmpty()
 
-    context(ShellExecutionContext)
+    context(ReapingShellExecutionContext)
     fun isUnUsed() = !isUsed()
 
-    context(ShellExecutionContext)
+    context(ReapingShellExecutionContext)
     fun processes(verbosity: ShellVerbosity = SILENT) = shell().copy(verbosity = verbosity).lsof.pidsUsingPort(port)
 
-    context(ShellExecutionContext)
+    context(ReapingShellExecutionContext)
     fun killAllProcesses(verbosity: ShellVerbosity = SILENT) {
         val toKill = processes(verbosity = verbosity)
         toKill.forEach {
@@ -57,7 +57,7 @@ data class Port(val port: Int) {
         if (toKill.isNotEmpty()) Thread.sleep(100) /*from experience, it seems I need to wait a bit for the port to become available*/
     }
 
-    context(ShellExecutionContext)
+    context(ReapingShellExecutionContext)
     fun serverSocket() = try {
         ServerSocket(port)
     } catch (e: BindException) {

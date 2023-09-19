@@ -9,7 +9,7 @@ import matt.model.data.message.InterAppMessage
 import matt.model.data.message.Open
 import matt.model.data.message.PING
 import matt.model.data.message.PONG
-import matt.shell.context.ShellExecutionContext
+import matt.shell.context.ReapingShellExecutionContext
 import matt.socket.port.Port
 import matt.socket.reader.socketReader
 import matt.socket.thing.InterAppThing
@@ -21,7 +21,7 @@ import kotlin.time.Duration.Companion.milliseconds
 
 open class InterAppClient(val port: Port) : InterAppThing() {
 
-    context(ShellExecutionContext)
+    context(ReapingShellExecutionContext)
     fun serverSeemsToBeOpen() = port.processes().isNotEmpty()
 
     fun receive(message: InterAppMessage) = send(message, andReceive = true)
@@ -40,7 +40,7 @@ open class InterAppClient(val port: Port) : InterAppThing() {
     fun exit() = send(EXIT, andReceive = false)
     fun go(value: String) = send(Go(value), andReceive = false)
     fun open(value: String) = send(Open(value), andReceive = false)
-    fun open(file: FilePath) = open(file.filePath)
+    fun open(file: FilePath): InterAppMessage? = open(file.path)
 
     private var out: EncodingOutputStream? = null
 
