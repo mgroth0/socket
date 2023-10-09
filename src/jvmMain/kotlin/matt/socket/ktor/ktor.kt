@@ -3,6 +3,7 @@ package matt.socket.ktor
 import io.ktor.network.selector.*
 import io.ktor.network.sockets.*
 import io.ktor.utils.io.*
+import io.ktor.utils.io.core.*
 import io.ktor.utils.io.jvm.javaio.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
@@ -12,10 +13,12 @@ import kotlinx.io.asSink
 import kotlinx.io.asSource
 import matt.lang.LOCALHOST
 import matt.lang.safeconvert.requireIsInt
+import matt.socket.endian.myByteOrder
 import matt.socket.port.Port
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import kotlin.coroutines.CoroutineContext
+import kotlin.io.use
 
 typealias ConnectionOp<R> = suspend KtorSocketConnection.() -> R
 
@@ -144,10 +147,19 @@ interface KtorSocketConnection {
 }
 
 sealed interface ReadChannelStatus
-object MoreToRead : ReadChannelStatus
-object Closed : ReadChannelStatus
+data object MoreToRead : ReadChannelStatus
+data object Closed : ReadChannelStatus
+
+val LOCAL_SOCKET_BYTE_ORDER = ByteOrder.nativeOrder()
+val MY_LOCAL_SOCKET_BYTE_ORDER = LOCAL_SOCKET_BYTE_ORDER.myByteOrder
 
 private class KtorSocketConnectionImpl internal constructor(socket: Socket) : KtorSocketConnection {
+
+
+    companion object {
+        /*Since I implement sockets for inter-app communications, I should use the OS ByteOrder. I think the default behavior for ktor sockets is network (big endian) whereas Mac aarch64 is little endian, and thats what java sockets used I think (java sockets used native)*/
+
+    }
 
     private val receiveChannel = socket.openReadChannel()
     private val sendChannel = socket.openWriteChannel(autoFlush = true)
@@ -161,7 +173,7 @@ private class KtorSocketConnectionImpl internal constructor(socket: Socket) : Kt
     }
 
     override suspend fun readInt(): Int {
-        return receiveChannel.readInt()
+        return receiveChannel.readInt(LOCAL_SOCKET_BYTE_ORDER)
     }
 
     override suspend fun writeBool(bool: Boolean) {
@@ -170,23 +182,24 @@ private class KtorSocketConnectionImpl internal constructor(socket: Socket) : Kt
     }
 
     override suspend fun writeDouble(double: Double) {
-        sendChannel.writeDouble(double)
+        sendChannel.writeDouble(double, LOCAL_SOCKET_BYTE_ORDER)
     }
 
     override suspend fun writeFloat(float: Float) {
-        sendChannel.writeFloat(float)
+        sendChannel.writeFloat(float, LOCAL_SOCKET_BYTE_ORDER)
     }
 
     override suspend fun writeInt(int: Int) {
-        sendChannel.writeInt(int)
+        sendChannel.writeInt(int, LOCAL_SOCKET_BYTE_ORDER)
     }
 
     override suspend fun writeLong(long: Long) {
-        sendChannel.writeLong(long)
+        println("writing long from java: $long")
+        sendChannel.writeLong(long, LOCAL_SOCKET_BYTE_ORDER)
     }
 
     override suspend fun writeShort(short: Short) {
-        sendChannel.writeShort(short)
+        sendChannel.writeShort(short, LOCAL_SOCKET_BYTE_ORDER)
     }
 
     override suspend fun readBool(): Boolean {
@@ -214,19 +227,19 @@ private class KtorSocketConnectionImpl internal constructor(socket: Socket) : Kt
     }
 
     override suspend fun readDouble(): Double {
-        return receiveChannel.readDouble()
+        return receiveChannel.readDouble(LOCAL_SOCKET_BYTE_ORDER)
     }
 
     override suspend fun readFloat(): Float {
-        return receiveChannel.readFloat()
+        return receiveChannel.readFloat(LOCAL_SOCKET_BYTE_ORDER)
     }
 
     override suspend fun readLong(): Long {
-        return receiveChannel.readLong()
+        return receiveChannel.readLong(LOCAL_SOCKET_BYTE_ORDER)
     }
 
     override suspend fun readShort(): Short {
-        return receiveChannel.readShort()
+        return receiveChannel.readShort(LOCAL_SOCKET_BYTE_ORDER)
     }
 
     override suspend fun readByte(): Byte {

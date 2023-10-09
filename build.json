@@ -17,6 +17,11 @@
       "key": "ktorNetwork"
     },
     {
+      "type": "Lib",
+      "cfg": "jvmMainImplementation",
+      "key": "ktorUtil"
+    },
+    {
       "type": "Project",
       "cfg": "jvmTestImplementation",
       "path": ":k:test"
