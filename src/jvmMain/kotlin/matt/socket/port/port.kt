@@ -1,6 +1,7 @@
 package matt.socket.port
 
 import matt.log.tab
+import matt.model.code.vals.portreg.PortRegistry
 import matt.shell.ShellResultHandler
 import matt.shell.ShellVerbosity
 import matt.shell.ShellVerbosity.Companion.SILENT
@@ -8,7 +9,6 @@ import matt.shell.context.ReapingShellExecutionContext
 import matt.shell.execReturners
 import matt.shell.proc.Pid
 import matt.shell.proc.ProcessKillSignal.SIGKILL
-import matt.socket.lsof.firstUnusedPort
 import matt.socket.lsof.lsof
 import matt.socket.socket.isOpen
 import java.net.BindException
@@ -85,3 +85,23 @@ data class Port(val port: Int) {
     }
 
 }
+
+
+
+context(ReapingShellExecutionContext)
+fun firstUnusedPort(): Port {
+
+    /*more performant and stable to do one lsof command than to do one per possible port*/
+    val usedPorts = usedPorts()
+
+
+    val myPort = PortRegistry.unRegisteredPortPool.asSequence().map {
+        Port(it)
+    }.first {
+        it !in usedPorts
+    }
+    return myPort
+}
+
+context(ReapingShellExecutionContext)
+fun usedPorts() = execReturners.silent.lsof.allPidsUsingAllPorts().keys

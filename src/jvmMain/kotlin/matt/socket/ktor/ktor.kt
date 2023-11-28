@@ -8,26 +8,29 @@ import io.ktor.utils.io.jvm.javaio.*
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlinx.coroutines.withTimeout
 import kotlinx.io.Buffer
 import kotlinx.io.asSink
 import kotlinx.io.asSource
 import matt.lang.LOCALHOST
-import matt.lang.safeconvert.requireIsInt
+import matt.lang.safeconvert.verifyToInt
 import matt.socket.endian.myByteOrder
 import matt.socket.port.Port
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import kotlin.coroutines.CoroutineContext
 import kotlin.io.use
+import kotlin.time.Duration
 
 typealias ConnectionOp<R> = suspend KtorSocketConnection.() -> R
 
 interface SocketScope : CoroutineScope {
+    val manager: SelectorManager /*should be abstract protected!!!!!*/
     suspend fun <R> server(
         port: Port,
         op: suspend KtorServerSocket.() -> R
     ): R {
-        val serverSocket = KtorServerSocketImpl(port)
+        val serverSocket = with(manager) { KtorServerSocketImpl(port) }
         return try {
             serverSocket.run {
                 op()
@@ -41,7 +44,7 @@ interface SocketScope : CoroutineScope {
         port: Port,
         op: ConnectionOp<R>
     ): R {
-        val serverSocket = KtorServerSocketTargetImpl(port)
+        val serverSocket = with(manager) { KtorServerSocketTargetImpl(port) }
         return serverSocket.connect(op)
     }
 }
@@ -53,28 +56,30 @@ suspend fun <R> useSockets(
 ): R {
     return withContext(newContext) {
         val manager = SelectorManager(this.coroutineContext)
-        manager.use {
+        val rr = manager.use {
             val socketScope = SocketScopeImpl(manager)
-            socketScope.op()
+            val r = socketScope.op()
+            r
         }
+        rr
     }
 }
 
-private class SocketScopeImpl(manager: SelectorManager) : SocketScope {
+private class SocketScopeImpl(override val manager: SelectorManager) : SocketScope {
     override val coroutineContext = manager.coroutineContext
 }
 
-
+context(SelectorManager)
 sealed class KtorSocket {
-    companion object {
-        @JvmStatic
-        protected val SELECTOR_MANAGER by lazy {
-            /*WARNING: I used to close this after use. Does it need to be closed? Or does it use daemon threads?*/
-            SelectorManager(Dispatchers.IO)
-        }
-    }
+//    companion object {
+//        @JvmStatic
+//        protected val SELECTOR_MANAGER by lazy {
+//            /*WARNING: I used to close this after use. Does it need to be closed? Or does it use daemon threads?*/
+//            SelectorManager(Dispatchers.IO)
+//        }
+//    }
 
-    protected val socketDefinition = aSocket(SELECTOR_MANAGER).tcp()
+    protected val socketDefinition = aSocket(this@SelectorManager).tcp()
 
     protected suspend fun <R> handleConnection(
         rawConnection: Socket,
@@ -98,6 +103,7 @@ interface KtorServerSocketTarget {
     suspend fun <R> connect(op: ConnectionOp<R>): R
 }
 
+context(SelectorManager)
 private class KtorServerSocketTargetImpl(private val port: Port) : KtorSocket(), KtorServerSocketTarget {
     override suspend fun <R> connect(op: ConnectionOp<R>): R {
         val rawConnection = socketDefinition.connect(LOCALHOST, port.port)
@@ -106,13 +112,22 @@ private class KtorServerSocketTargetImpl(private val port: Port) : KtorSocket(),
 }
 
 interface KtorServerSocket {
-    suspend fun <R> accept(op: ConnectionOp<R>): R
+    suspend fun <R> accept(
+        timeout: Duration = Duration.INFINITE,
+        op: ConnectionOp<R>
+    ): R
 }
 
+context(SelectorManager)
 private class KtorServerSocketImpl(port: Port) : KtorSocket(), KtorServerSocket {
     private val socket = socketDefinition.bind(LOCALHOST, port.port)
-    override suspend fun <R> accept(op: ConnectionOp<R>): R {
-        val rawConnection = socket.accept()
+    override suspend fun <R> accept(
+        timeout: Duration,
+        op: ConnectionOp<R>
+    ): R {
+        val rawConnection = withTimeout(timeout) {
+            socket.accept()
+        }
         return handleConnection(rawConnection, op)
     }
 
@@ -269,7 +284,7 @@ private class KtorSocketConnectionImpl internal constructor(socket: Socket) : Kt
         val buffer = Buffer()
         buffer.transferFrom(receiveChannel.toInputStream().asSource())
         val size = buffer.size
-        val outputStream = ByteArrayOutputStream(size.requireIsInt())
+        val outputStream = ByteArrayOutputStream(size.verifyToInt())
         val sink = outputStream.asSink()
         buffer.transferTo(sink)
         return outputStream.toByteArray()
