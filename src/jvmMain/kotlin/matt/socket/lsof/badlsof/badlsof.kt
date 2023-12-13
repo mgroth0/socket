@@ -5,7 +5,7 @@ import matt.lang.anno.SeeURL
 import matt.lang.optArray
 import matt.shell.ControlledShellProgram
 import matt.shell.Shell
-import matt.shell.proc.Pid
+import matt.shell.proc.pid.Pid
 import matt.socket.lsof.filters.LsofFilter
 import matt.socket.lsof.filters.TcpPort
 

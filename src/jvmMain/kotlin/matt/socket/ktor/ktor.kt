@@ -18,7 +18,7 @@ import matt.socket.endian.myByteOrder
 import matt.socket.port.Port
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
-import kotlin.coroutines.CoroutineContext
+import kotlin.coroutines.coroutineContext
 import kotlin.io.use
 import kotlin.time.Duration
 
@@ -50,19 +50,14 @@ interface SocketScope : CoroutineScope {
 }
 
 
-suspend fun <R> useSockets(
-    newContext: CoroutineContext,
-    op: suspend SocketScope.() -> R
-): R {
-    return withContext(newContext) {
-        val manager = SelectorManager(this.coroutineContext)
-        val rr = manager.use {
-            val socketScope = SocketScopeImpl(manager)
-            val r = socketScope.op()
-            r
-        }
-        rr
+suspend fun <R> useSockets(op: suspend SocketScope.() -> R): R {
+    val manager = SelectorManager(coroutineContext)
+    val rr = manager.use {
+        val socketScope = SocketScopeImpl(manager)
+        val r = socketScope.op()
+        r
     }
+    return rr
 }
 
 private class SocketScopeImpl(override val manager: SelectorManager) : SocketScope {

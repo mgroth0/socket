@@ -5,7 +5,7 @@ import matt.lang.go
 import matt.lang.optArray
 import matt.prim.str.filterNotBlank
 import matt.shell.Shell
-import matt.shell.proc.Pid
+import matt.shell.proc.pid.Pid
 import matt.socket.lsof.badlsof.NonProgrammaticListOfOpenFilesCommand
 import matt.socket.lsof.err.LsofParseException
 import matt.socket.lsof.filters.AllLocalHostTCPAddresses

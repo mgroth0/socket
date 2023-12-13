@@ -7,8 +7,8 @@ import matt.shell.ShellVerbosity
 import matt.shell.ShellVerbosity.Companion.SILENT
 import matt.shell.context.ReapingShellExecutionContext
 import matt.shell.execReturners
-import matt.shell.proc.Pid
-import matt.shell.proc.ProcessKillSignal.SIGKILL
+import matt.shell.proc.pid.Pid
+import matt.shell.proc.signal.ProcessKillSignal.SIGKILL
 import matt.socket.lsof.lsof
 import matt.socket.socket.isOpen
 import java.net.BindException

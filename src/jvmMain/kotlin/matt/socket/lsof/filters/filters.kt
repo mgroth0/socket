@@ -1,6 +1,6 @@
 package matt.socket.lsof.filters
 
-import matt.shell.proc.Pid
+import matt.shell.proc.pid.Pid
 
 
 internal sealed interface LsofFilter {
