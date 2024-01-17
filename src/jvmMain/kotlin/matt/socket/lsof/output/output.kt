@@ -4,7 +4,7 @@ import matt.socket.lsof.err.LsofParseException
 
 
 private object InternetAddressParser {
-    fun parse(raw: String): AddressAndPort {
+    fun parse(raw: String): AddressAndPortLike {
         val inBrackets = raw.startsWith("[")
         val colon: Int
         val rawAddress = if (inBrackets) {
@@ -17,11 +17,13 @@ private object InternetAddressParser {
         }
         val remaining = raw.substring(colon)
         val dash = remaining.indexOf("-")
-        val port = if (dash == -1) {
-            remaining.substring(1).toInt()
+        val portString = if (dash == -1) {
+            remaining.substring(1)
         } else {
-            remaining.substring(1, dash).toInt()
+            remaining.substring(1, dash)
         }
+        if (portString == "*") return AddressAndStarPort(address = rawAddress)
+        val port = portString.toInt()
         return AddressAndPort(rawAddress, port)
     }
 }
@@ -32,14 +34,16 @@ value class ClientSocketFile(override val raw: String) : FileNameCommentInternet
     val clientHost get() = InternetAddressParser.parse(raw).address
     val clientPort
         get() = try {
-            InternetAddressParser.parse(raw.substringBefore("-")).port
+            val loc = InternetAddressParser.parse(raw.substringBefore("-"))
+            (loc as? AddressAndPort)?.port
         } catch (e: NumberFormatException) {
             throw LsofParseException("Exception parsing ClientSocketFile.clientPort with raw arg: $raw", e)
         }
     override val serverHost get() = InternetAddressParser.parse(raw.substringAfter(">")).address
     override val serverPort
         get() = try {
-            InternetAddressParser.parse(raw.substringAfter(">")).port
+            val loc = InternetAddressParser.parse(raw.substringAfter(">"))
+            (loc as? AddressAndPort)?.port
         } catch (e: NumberFormatException) {
             throw LsofParseException("Exception parsing ClientSocketFile.serverPort with raw arg: $raw", e)
         }
@@ -56,7 +60,8 @@ value class ServerSocketFile(override val raw: String) : FileNameCommentInternet
     override val serverHost get() = InternetAddressParser.parse(raw).address
     override val serverPort
         get() = try {
-            InternetAddressParser.parse(raw).port
+            val loc = InternetAddressParser.parse(raw)
+            (loc as? AddressAndPort)?.port
         } catch (e: NumberFormatException) {
             throw LsofParseException("Exception parsing ServerSocketFile.serverPort with raw arg: $raw", e)
         }
@@ -68,15 +73,18 @@ sealed interface OutputField
 sealed interface FileNameCommentInternetAddress : OutputField {
     val raw: String
     val serverHost: String
-    val serverPort: Int
+    val serverPort: Int?
 }
 
+sealed interface AddressAndPortLike {
+    val address: String
+}
 
-
+data class AddressAndStarPort(override val address: String) : AddressAndPortLike
 data class AddressAndPort(
-    val address: String,
+    override val address: String,
     val port: Int
-)
+) : AddressAndPortLike
 
 
 sealed interface LsofFileDescriptor : OutputField

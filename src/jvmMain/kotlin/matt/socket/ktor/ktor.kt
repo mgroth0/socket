@@ -1,10 +1,23 @@
 package matt.socket.ktor
 
-import io.ktor.network.selector.*
-import io.ktor.network.sockets.*
-import io.ktor.utils.io.*
-import io.ktor.utils.io.core.*
-import io.ktor.utils.io.jvm.javaio.*
+import io.ktor.network.selector.SelectorManager
+import io.ktor.network.sockets.Socket
+import io.ktor.network.sockets.aSocket
+import io.ktor.network.sockets.openReadChannel
+import io.ktor.network.sockets.openWriteChannel
+import io.ktor.utils.io.core.ByteOrder
+import io.ktor.utils.io.jvm.javaio.toInputStream
+import io.ktor.utils.io.readDouble
+import io.ktor.utils.io.readFloat
+import io.ktor.utils.io.readInt
+import io.ktor.utils.io.readLong
+import io.ktor.utils.io.readShort
+import io.ktor.utils.io.writeDouble
+import io.ktor.utils.io.writeFloat
+import io.ktor.utils.io.writeInt
+import io.ktor.utils.io.writeLong
+import io.ktor.utils.io.writeShort
+import io.ktor.utils.io.writeStringUtf8
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
@@ -19,7 +32,6 @@ import matt.socket.port.Port
 import java.io.ByteArrayOutputStream
 import java.nio.ByteBuffer
 import kotlin.coroutines.coroutineContext
-import kotlin.io.use
 import kotlin.time.Duration
 
 typealias ConnectionOp<R> = suspend KtorSocketConnection.() -> R

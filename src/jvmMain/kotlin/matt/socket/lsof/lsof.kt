@@ -8,7 +8,7 @@ import matt.shell.Shell
 import matt.shell.proc.pid.Pid
 import matt.socket.lsof.badlsof.NonProgrammaticListOfOpenFilesCommand
 import matt.socket.lsof.err.LsofParseException
-import matt.socket.lsof.filters.AllLocalHostTCPAddresses
+import matt.socket.lsof.filters.AllTCPAddresses
 import matt.socket.lsof.filters.LsofFilter
 import matt.socket.lsof.filters.PidFilter
 import matt.socket.lsof.filters.TcpPort
@@ -39,11 +39,9 @@ class ListOfOpenFilesCommand(shell: Shell<String>) : NonProgrammaticListOfOpenFi
     fun allPidsUsingAllPorts() = run {
         try {
             programmaticList(
-                AllLocalHostTCPAddresses
-            ).flatMap { processSet -> processSet.files.map {processSet.pid to it  } }.groupBy {
-                Port(
-                    it.second.file!!.serverPort
-                )
+                AllTCPAddresses
+            ).flatMap { processSet -> processSet.files.map { processSet.pid to it } }.groupBy {
+                it.second.file!!.serverPort?.let { Port(it) }
             }.mapValues { it.value.map { Pid(it.first.value.toLong()) } }
         } catch (e: LsofParseException) {
             println("Doing a full lsof for debugging:\n\n${this()}\n\n")
@@ -157,7 +155,6 @@ class ListOfOpenFilesCommand(shell: Shell<String>) : NonProgrammaticListOfOpenFi
         return result.toList()
     }
 }
-
 
 
 

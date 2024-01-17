@@ -18,7 +18,6 @@ import kotlin.system.exitProcess
 
 
 context(ReapingShellExecutionContext)
-        /*TODO: if it fails because this function was executed in parallel elsewhere and got the same port, make it retry.*/
 fun serverSocketWithFirstUnusedPort(): Pair<ServerSocket, Port> {
     val port = firstUnusedPort()
     return port.serverSocket() to port
@@ -87,15 +86,15 @@ data class Port(val port: Int) {
 }
 
 
-
 context(ReapingShellExecutionContext)
-fun firstUnusedPort(): Port {
+fun firstUnusedPort(
+    outOf: IntRange = PortRegistry.unRegisteredPortPool
+): Port {
 
     /*more performant and stable to do one lsof command than to do one per possible port*/
     val usedPorts = usedPorts()
 
-
-    val myPort = PortRegistry.unRegisteredPortPool.asSequence().map {
+    val myPort = outOf.asSequence().map {
         Port(it)
     }.first {
         it !in usedPorts

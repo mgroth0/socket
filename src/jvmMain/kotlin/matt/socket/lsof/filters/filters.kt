@@ -15,6 +15,7 @@ data object AllTCPAddresses : LsofFilter {
     override val args = arrayOf("-iTCP")
 }
 
+@Deprecated("\"the @localhost part is causing lines like \\\"n*:65004\\\" not to show. Apparently the asterisk is used to signal zero ports, which are aparently excluded when localhost is specified, even though my regular apps like Launch are getting ports like this\". Replace with AllTCPAddresses")
 data object AllLocalHostTCPAddresses : LsofFilter {
     override val args = arrayOf("-iTCP@localhost")
 }

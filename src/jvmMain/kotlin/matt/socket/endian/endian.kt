@@ -1,6 +1,7 @@
 package matt.socket.endian
 
-import io.ktor.utils.io.core.ByteOrder.*
+import io.ktor.utils.io.core.ByteOrder.BIG_ENDIAN
+import io.ktor.utils.io.core.ByteOrder.LITTLE_ENDIAN
 import matt.lang.NEVER
 import matt.prim.endian.MyByteOrder
 import matt.prim.endian.MyByteOrder.BIG
