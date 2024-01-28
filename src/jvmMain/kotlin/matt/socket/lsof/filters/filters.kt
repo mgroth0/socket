@@ -21,7 +21,7 @@ data object AllLocalHostTCPAddresses : LsofFilter {
 }
 
 sealed class InternetAddress(private val specifier: String) : LsofFilter {
-    override val args = arrayOf("-i", specifier)
+    final override val args = arrayOf("-i", specifier)
 }
 
 class TcpPort(val port: Int) : InternetAddress(specifier = "tcp:$port")

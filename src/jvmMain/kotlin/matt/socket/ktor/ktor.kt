@@ -36,9 +36,9 @@ import kotlin.time.Duration
 
 typealias ConnectionOp<R> = suspend KtorSocketConnection.() -> R
 
-interface SocketScope : CoroutineScope {
-    val manager: SelectorManager /*should be abstract protected!!!!!*/
-    suspend fun <R> server(
+abstract class SocketScope : CoroutineScope {
+    abstract val manager: SelectorManager /*should be abstract protected!!!!!*/
+    final suspend fun <R> server(
         port: Port,
         op: suspend KtorServerSocket.() -> R
     ): R {
@@ -52,7 +52,8 @@ interface SocketScope : CoroutineScope {
         }
     }
 
-    suspend fun <R> client(
+
+    final suspend fun <R> client(
         port: Port,
         op: ConnectionOp<R>
     ): R {
@@ -72,7 +73,7 @@ suspend fun <R> useSockets(op: suspend SocketScope.() -> R): R {
     return rr
 }
 
-private class SocketScopeImpl(override val manager: SelectorManager) : SocketScope {
+private class SocketScopeImpl(override val manager: SelectorManager) : SocketScope() {
     override val coroutineContext = manager.coroutineContext
 }
 
@@ -127,7 +128,13 @@ interface KtorServerSocket {
 
 context(SelectorManager)
 private class KtorServerSocketImpl(port: Port) : KtorSocket(), KtorServerSocket {
-    private val socket = socketDefinition.bind(LOCALHOST, port.port)
+    private val socket = try {
+        socketDefinition.bind(LOCALHOST, port.port)
+    } catch (e: java.net.BindException) {
+        println("Got BindException when trying to bind server socket to port ${port.port}")
+        throw e
+    }
+
     override suspend fun <R> accept(
         timeout: Duration,
         op: ConnectionOp<R>

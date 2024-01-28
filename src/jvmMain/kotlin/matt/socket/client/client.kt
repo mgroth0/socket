@@ -1,7 +1,7 @@
 package matt.socket.client
 
 import kotlinx.coroutines.runBlocking
-import matt.lang.model.file.FilePath
+import matt.lang.model.file.AnyResolvableFilePath
 import matt.model.data.message.ACTIVATE
 import matt.model.data.message.EXIT
 import matt.model.data.message.Go
@@ -40,7 +40,7 @@ open class InterAppClient(val port: Port) : InterAppThing() {
     fun exit() = send(EXIT, andReceive = false)
     fun go(value: String) = send(Go(value), andReceive = false)
     fun open(value: String) = send(Open(value), andReceive = false)
-    fun open(file: FilePath): InterAppMessage? = open(file.path)
+    fun open(file: AnyResolvableFilePath): InterAppMessage? = open(file.path)
 
     private var out: EncodingOutputStream? = null
 
