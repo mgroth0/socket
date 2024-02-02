@@ -92,17 +92,14 @@ sealed class KtorSocket {
     protected suspend fun <R> handleConnection(
         rawConnection: Socket,
         op: ConnectionOp<R>
-    ): R {
-        return try {
-            val connection = KtorSocketConnectionImpl(rawConnection)
-            val r = connection.op()
-            r
-        } finally {
-            withContext(Dispatchers.IO) {
-                rawConnection.close()
-            }
+    ): R = try {
+        val connection = KtorSocketConnectionImpl(rawConnection)
+        val r = connection.op()
+        r
+    } finally {
+        withContext(Dispatchers.IO) {
+            rawConnection.close()
         }
-
     }
 
 }
@@ -201,9 +198,7 @@ private class KtorSocketConnectionImpl internal constructor(socket: Socket) : Kt
         return MoreToRead
     }
 
-    override suspend fun readInt(): Int {
-        return receiveChannel.readInt(LOCAL_SOCKET_BYTE_ORDER)
-    }
+    override suspend fun readInt(): Int = receiveChannel.readInt(LOCAL_SOCKET_BYTE_ORDER)
 
     override suspend fun writeBool(bool: Boolean) {
         if (bool) writeByte(1.toByte())
@@ -249,37 +244,21 @@ private class KtorSocketConnectionImpl internal constructor(socket: Socket) : Kt
         return buff.asCharBuffer().get()
     }
 
-    override suspend fun readNBytes(n: Int): ByteArray {
-        return ByteArray(n) {
-            receiveChannel.readByte()
-        }
+    override suspend fun readNBytes(n: Int): ByteArray = ByteArray(n) {
+        receiveChannel.readByte()
     }
 
-    override suspend fun readDouble(): Double {
-        return receiveChannel.readDouble(LOCAL_SOCKET_BYTE_ORDER)
-    }
+    override suspend fun readDouble(): Double = receiveChannel.readDouble(LOCAL_SOCKET_BYTE_ORDER)
 
-    override suspend fun readFloat(): Float {
-        return receiveChannel.readFloat(LOCAL_SOCKET_BYTE_ORDER)
-    }
+    override suspend fun readFloat(): Float = receiveChannel.readFloat(LOCAL_SOCKET_BYTE_ORDER)
 
-    override suspend fun readLong(): Long {
-        return receiveChannel.readLong(LOCAL_SOCKET_BYTE_ORDER)
-    }
+    override suspend fun readLong(): Long = receiveChannel.readLong(LOCAL_SOCKET_BYTE_ORDER)
 
-    override suspend fun readShort(): Short {
-        return receiveChannel.readShort(LOCAL_SOCKET_BYTE_ORDER)
-    }
+    override suspend fun readShort(): Short = receiveChannel.readShort(LOCAL_SOCKET_BYTE_ORDER)
 
-    override suspend fun readByte(): Byte {
-        return receiveChannel.readByte()
-    }
+    override suspend fun readByte(): Byte = receiveChannel.readByte()
 
-    override suspend fun readUByte(): UByte {
-
-
-        return readByte().toUByte()
-    }
+    override suspend fun readUByte(): UByte = readByte().toUByte()
 
     override suspend fun writeByte(byte: Byte) {
         sendChannel.writeByte(byte)

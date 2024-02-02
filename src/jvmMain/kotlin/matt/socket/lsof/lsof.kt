@@ -61,14 +61,14 @@ class ListOfOpenFilesCommand(shell: Shell<String>) : NonProgrammaticListOfOpenFi
     ): List<ProcessSet> {
         val rawOutput = sendCommand(
             "-n", /*
-            * Inhibits network numbers from being converted to names.
-            * Supposedly improves performance.
-        */
+             * Inhibits network numbers from being converted to names.
+             * Supposedly improves performance.
+             */
             "-P" /*
-            * Inhibits conversion of port numbers to port names for network files.
-            * May make lsof run a little faster.
-            * It is also useful when port name lookup is not working properly.
-        */,
+             * Inhibits conversion of port numbers to port names for network files.
+             * May make lsof run a little faster.
+             * It is also useful when port name lookup is not working properly.
+             */,
             "-F", /*OUTPUT FOR OTHER PROGRAMS*/
             listOf(
                 'n'

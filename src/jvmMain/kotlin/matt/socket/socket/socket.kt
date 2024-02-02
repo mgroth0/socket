@@ -10,12 +10,10 @@ import kotlin.time.Duration
 val Socket.isOpen get() = !isClosed
 
 
-fun ServerSocket.acceptOrTimeout(): Socket? {
-    return try {
-        accept()
-    } catch (e: SocketTimeoutException) {
-        null
-    }
+fun ServerSocket.acceptOrTimeout(): Socket? = try {
+    accept()
+} catch (e: SocketTimeoutException) {
+    null
 }
 
 fun ServerSocket.acceptWithTimeout(timeout: Duration): Socket? {
