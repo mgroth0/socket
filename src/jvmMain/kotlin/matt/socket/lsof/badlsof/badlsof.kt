@@ -1,10 +1,10 @@
 package matt.socket.lsof.badlsof
 
-import matt.lang.If
 import matt.lang.anno.SeeURL
-import matt.lang.optArray
+import matt.lang.common.If
+import matt.lang.common.optArray
 import matt.shell.ControlledShellProgram
-import matt.shell.Shell
+import matt.shell.common.Shell
 import matt.shell.proc.pid.Pid
 import matt.socket.lsof.filters.LsofFilter
 import matt.socket.lsof.filters.TcpPort
@@ -24,5 +24,4 @@ abstract class NonProgrammaticListOfOpenFilesCommand(shell: Shell<String>) : Con
     @Deprecated("this output is not intended by lsof for programmatic use, use -F instead")
     private fun oldWayToGetPidsUsingPort(port: Int) =
         list(terse = true, TcpPort(port)).split("\\s+".toRegex()).filter { it.isNotBlank() }.map { Pid(it.toLong()) }
-
 }

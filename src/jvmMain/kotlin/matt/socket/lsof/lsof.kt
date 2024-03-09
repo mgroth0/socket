@@ -1,10 +1,10 @@
 package matt.socket.lsof
 
-import matt.lang.enumValueOfOrNull
-import matt.lang.go
-import matt.lang.optArray
+import matt.lang.common.go
+import matt.lang.common.optArray
+import matt.lang.j.enumValueOfOrNull
 import matt.prim.str.filterNotBlank
-import matt.shell.Shell
+import matt.shell.common.Shell
 import matt.shell.proc.pid.Pid
 import matt.socket.lsof.badlsof.NonProgrammaticListOfOpenFilesCommand
 import matt.socket.lsof.err.LsofParseException
@@ -32,70 +32,76 @@ val Shell<String>.lsof get() = ListOfOpenFilesCommand(this)
 class ListOfOpenFilesCommand(shell: Shell<String>) : NonProgrammaticListOfOpenFilesCommand(shell = shell) {
 
 
-    fun pidsUsingPort(port: Int) = programmaticList(
-        TcpPort(port)
-    ).map { Pid(it.pid.value.toLong()) }
+    fun pidsUsingPort(port: Int) =
+        programmaticList(
+            TcpPort(port)
+        ).map { Pid(it.pid.value.toLong()) }
 
-    fun allPidsUsingAllPorts() = run {
-        try {
-            programmaticList(
-                AllTCPAddresses
-            ).flatMap { processSet -> processSet.files.map { processSet.pid to it } }.groupBy {
-                it.second.file!!.serverPort?.let { Port(it) }
-            }.mapValues { it.value.map { Pid(it.first.value.toLong()) } }
-        } catch (e: LsofParseException) {
-            println("Doing a full lsof for debugging:\n\n${this()}\n\n")
-            throw e
+    fun allPidsUsingAllPorts() =
+        run {
+            try {
+                programmaticList(
+                    AllTCPAddresses
+                ).flatMap { processSet -> processSet.files.map { processSet.pid to it } }.groupBy {
+                    it.second.file!!.serverPort?.let { Port(it) }
+                }.mapValues { it.value.map { Pid(it.first.value.toLong()) } }
+            } catch (e: LsofParseException) {
+                println("Doing a full lsof for debugging:\n\n${this()}\n\n")
+                throw e
+            }
         }
-    }
 
     operator fun invoke() = sendCommand()
 
 
-    fun openedFilesOf(pid: Pid) = programmaticList(
-        PidFilter(pid)
-    ).single().files.map { it.file!! }
+    fun openedFilesOf(pid: Pid) =
+        programmaticList(
+            PidFilter(pid)
+        ).single().files.map { it.file!! }
 
     private fun programmaticList(
-        filter: LsofFilter? = null,
+        filter: LsofFilter? = null
     ): List<ProcessSet> {
-        val rawOutput = sendCommand(
-            "-n", /*
-             * Inhibits network numbers from being converted to names.
-             * Supposedly improves performance.
-             */
-            "-P" /*
-             * Inhibits conversion of port numbers to port names for network files.
-             * May make lsof run a little faster.
-             * It is also useful when port name lookup is not working properly.
-             */,
-            "-F", /*OUTPUT FOR OTHER PROGRAMS*/
-            listOf(
-                'n'
-            ).joinToString(separator = ""),
-            * optArray(filter) { args }
-        )
+        val rawOutput =
+            sendCommand(
+                "-n", /*
+                 * Inhibits network numbers from being converted to names.
+                 * Supposedly improves performance.
+                 */
+                "-P" /*
+                 * Inhibits conversion of port numbers to port names for network files.
+                 * May make lsof run a little faster.
+                 * It is also useful when port name lookup is not working properly.
+                 */,
+                "-F", /*OUTPUT FOR OTHER PROGRAMS*/
+                listOf(
+                    'n'
+                ).joinToString(separator = ""),
+                * optArray(filter) { args }
+            )
 
         val unitsOfInformation = rawOutput.lines().filterNotBlank()
 
 
         val result = mutableListOf<ProcessSet>()
 
-        val fields = unitsOfInformation.map { info ->
-            val fieldIdentifier = info.first()
-            val fieldValue = info.substring(1)
+        val fields =
+            unitsOfInformation.map { info ->
+                val fieldIdentifier = info.first()
+                val fieldValue = info.substring(1)
 
-            when (fieldIdentifier) {
-                'p'  -> ProcessId(fieldValue.toInt())
-                'f'  -> enumValueOfOrNull<KnownLsofFileDescriptor>(fieldValue) ?: UnknownLsofFileDescriptor(fieldValue)
-                'n'  -> when {
-                    "->" in fieldValue -> ClientSocketFile(fieldValue)
-                    else               -> ServerSocketFile(fieldValue)
+                when (fieldIdentifier) {
+                    'p'  -> ProcessId(fieldValue.toInt())
+                    'f'  -> enumValueOfOrNull<KnownLsofFileDescriptor>(fieldValue) ?: UnknownLsofFileDescriptor(fieldValue)
+                    'n'  ->
+                        when {
+                            "->" in fieldValue -> ClientSocketFile(fieldValue)
+                            else               -> ServerSocketFile(fieldValue)
+                        }
+
+                    else -> TODO("lsof field '$fieldIdentifier' is not implemented")
                 }
-
-                else -> TODO("lsof field '$fieldIdentifier' is not implemented")
             }
-        }
 
         var currentPid: ProcessId? = null
         var currentFileDescriptor: LsofFileDescriptor? = null

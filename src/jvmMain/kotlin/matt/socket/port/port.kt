@@ -5,10 +5,12 @@ import matt.model.code.vals.portreg.PortRegistry
 import matt.shell.ShellResultHandler
 import matt.shell.ShellVerbosity
 import matt.shell.ShellVerbosity.Companion.SILENT
-import matt.shell.context.ReapingShellExecutionContext
+import matt.shell.commonj.context.ReapingShellExecutionContext
 import matt.shell.execReturners
 import matt.shell.proc.pid.Pid
 import matt.shell.proc.signal.ProcessKillSignal.SIGKILL
+import matt.socket.ktor.ConnectionReturningOp
+import matt.socket.ktor.useSockets
 import matt.socket.lsof.lsof
 import matt.socket.socket.isOpen
 import java.net.BindException
@@ -57,32 +59,40 @@ data class Port(val port: Int) {
     }
 
     context(ReapingShellExecutionContext)
-    fun serverSocket() = try {
-        ServerSocket(port)
-    } catch (e: BindException) {
-        println("")
-        println("port was $port")
-        print("checking lsof...")
-        processes().forEach {
-            tab(it)
+    fun serverSocket() =
+        try {
+            ServerSocket(port)
+        } catch (e: BindException) {
+            println("")
+            println("port was $port")
+            print("checking lsof...")
+            processes().forEach {
+                tab(it)
+            }
+            e.printStackTrace()
+            exitProcess(1)
         }
-        e.printStackTrace()
-        exitProcess(1)
-    }
 
 
     private var _clientSocket: Socket? = null
 
     @Synchronized
-    fun clientSocket() = _clientSocket?.takeIf { it.isOpen } ?: Socket("localhost", port).also {
-        _clientSocket = it
-    }
+    fun clientSocket() =
+        _clientSocket?.takeIf { it.isOpen } ?: Socket("localhost", port).also {
+            _clientSocket = it
+        }
 
     @Synchronized
     fun closeClientSocket() {
         _clientSocket?.close()
     }
 
+    suspend fun <R> newClientSocket(op: ConnectionReturningOp<R>): R =
+        useSockets {
+            client(this@Port) {
+                op()
+            }
+        }
 }
 
 
@@ -94,11 +104,12 @@ fun firstUnusedPort(
     /*more performant and stable to do one lsof command than to do one per possible port*/
     val usedPorts = usedPorts()
 
-    val myPort = outOf.asSequence().map {
-        Port(it)
-    }.first {
-        it !in usedPorts
-    }
+    val myPort =
+        outOf.asSequence().map {
+            Port(it)
+        }.first {
+            it !in usedPorts
+        }
     return myPort
 }
 

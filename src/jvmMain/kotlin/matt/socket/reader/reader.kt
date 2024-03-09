@@ -1,93 +1,79 @@
 package matt.socket.reader
 
-import kotlinx.coroutines.delay
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.channels.ClosedReceiveChannelException
 import kotlinx.serialization.serializer
-import matt.lang.until
-import matt.lang.untilIs
-import matt.log.NOPLogger
+import matt.lang.idea.FailableIdea
+import matt.log.j.NOPLogger
 import matt.log.logger.Logger
 import matt.model.data.message.InterAppMessage
+import matt.socket.ktor.KtorSocketConnection
 import matt.stream.encoding.Encoding
-import matt.stream.encoding.reader.message.MessageReader
-import matt.stream.encoding.result.EOF
-import matt.stream.encoding.result.ReadSectionParsed
-import matt.stream.encoding.result.TIMEOUT
-import matt.stream.encoding.result.UNREADABLE
-import java.lang.System.currentTimeMillis
-import java.net.Socket
-import kotlin.time.Duration
-import kotlin.time.Duration.Companion.milliseconds
+import matt.stream.encoding.reader.message.SuspendingMessageReader
+import matt.stream.encoding.result.MessageFailureReason
 
-fun Socket.socketReader(
-    log: Logger = NOPLogger,
+context(CoroutineScope)
+suspend fun <R> KtorSocketConnection.launchNewSocketReader(
     encoding: Encoding,
-    sleepTime: Duration = 100.milliseconds,
-    readTime: Duration = 1.milliseconds,
-) = SocketReader(
-    this,
-    log = log,
-    encoding = encoding,
-    sleepTime = sleepTime,
-    readTime = readTime
-)
-
-class SocketReader(
-    val socket: Socket,
-    encoding: Encoding,
-    readTime: Duration,
-    private var sleepTime: Duration,
-    log: Logger = NOPLogger
-) : MessageReader<InterAppMessage>(encoding, socket.getInputStream(), serializer<InterAppMessage>(), log) {
-
-    private var readTime: Duration?
-        get() = socket.soTimeout.takeIf { it != 0 }?.milliseconds
-        set(value) {
-            socket.soTimeout = value?.inWholeMilliseconds?.toInt() ?: 0
-        }
-
-    init {
-        this.readTime = readTime
-    }
-
-    suspend fun readSectionsBeforeTimeout(
-        timeout: Duration,
-    ): List<InterAppMessage> = decorate(timeout) {
-        val stopAt = currentTimeMillis() + timeout.inWholeMilliseconds
-        val sections = mutableListOf<InterAppMessage>()
-        until(stopAt) {
-            sections += readSectionOrSuspend() ?: return@decorate sections
-        }
-        sections
-    }
-
-    suspend fun readSectionBeforeTimeout(
-        timeout: Duration,
-    ): InterAppMessage? = decorate(timeout) {
-        val stopAt = currentTimeMillis() + timeout.inWholeMilliseconds
-        until(stopAt) {
-            readSectionOrSuspend()?.let {
-                return@decorate it
-            }
-        }
-        null
-    }
-
-    suspend fun readSectionOrSuspend() = readMessageOr {
-        delay(sleepTime.inWholeMilliseconds)
-    }
-
-    private inline fun readMessageOr(op: () -> Unit): InterAppMessage? = decorate {
-        untilIs {
-            when (val sectionResult = message()) {
-                EOF, UNREADABLE         -> null
-                TIMEOUT                 -> op()
-                is ReadSectionParsed<*> -> sectionResult.sect
-            }
-        }
-    }
+    logger: Logger = NOPLogger,
+    op: suspend NewSocketReaderDsl.() -> R
+): R =
+    NewSocketReaderImpl(
+        this,
+        readScope = this@CoroutineScope,
+        encoding,
+        log = logger
+    ).op()
 
 
+interface NewSocketReaderDsl {
+    suspend fun readMessage(): InterAppPossibleMessageResult
 }
+
+sealed interface InterAppPossibleMessageResult: FailableIdea
+sealed interface InterAppMessageResult: InterAppPossibleMessageResult
+data object NoMessage: InterAppPossibleMessageResult
+class Success(val message: InterAppMessage): InterAppMessageResult
+
+
+
+
+
+
+class MessageReceptionFailure(val reason: MessageFailureReason): InterAppMessageResult
+
+private class NewSocketReaderImpl(
+    connection: KtorSocketConnection,
+    readScope: CoroutineScope,
+    encoding: Encoding,
+    log: Logger = NOPLogger
+) : SuspendingMessageReader<InterAppMessage>(
+        encoding,
+        connection,
+        serializer<InterAppMessage>(),
+        log
+    ),
+    NewSocketReaderDsl {
+
+    private val messageChannel by lazy {
+        with(readScope) {
+            launchMessageChannel()
+        }
+    }
+
+    override suspend fun readMessage(): InterAppPossibleMessageResult {
+
+        val sectionResult =
+            try {
+                messageChannel.receive()
+            } catch (e: ClosedReceiveChannelException) {
+                /*this happens normally, since I close messageChannel manually when the socket is closed*/
+                return NoMessage
+            }
+        return Success(sectionResult)
+    }
+}
+
 
 
 
