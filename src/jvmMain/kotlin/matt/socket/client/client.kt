@@ -9,9 +9,10 @@ import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 import kotlinx.coroutines.sync.Mutex
 import kotlinx.coroutines.sync.withLock
-import kotlinx.coroutines.withTimeout
 import kotlinx.serialization.encodeToString
 import kotlinx.serialization.json.Json
+import kotlinx.serialization.serializer
+import matt.async.co.withThrowingTimeout
 import matt.lang.anno.Duplicated
 import matt.lang.j.sync
 import matt.lang.model.file.AnyResolvableFilePath
@@ -66,7 +67,7 @@ open class InterAppClient(
 
 
     private val sendChannel = Channel<InterAppMessage>(Channel.UNLIMITED)
-    private val readChannel = Channel<InterAppMessageResult>(Channel.UNLIMITED)
+    private val readChannel = Channel<InterAppMessageResult<InterAppMessage>>(Channel.UNLIMITED)
 
     private var initialized = false
     private var closed = false
@@ -84,7 +85,7 @@ open class InterAppClient(
             scope.launch(Dispatchers.IO) {
                 port.newClientSocket {
                     @Duplicated(2834523)
-                    launchNewSocketReader(ENCODING, logger = logger) {
+                    launchNewSocketReader(ENCODING, logger = logger, serializer = serializer<InterAppMessage>()) {
                         coroutineScope {
                             launch {
                                 sendChannel.consumeEach {
@@ -186,13 +187,13 @@ open class InterAppClient(
         message: InterAppMessage,
         andClose: Boolean = true,
         timeout: Duration = config.timeout
-    ): InterAppMessageResult =
+    ): InterAppMessageResult<InterAppMessage> =
         mutex.withLock {
             ensureActive()
             sendChannel.send(message)
-            val response: InterAppMessageResult =
+            val response: InterAppMessageResult<InterAppMessage> =
                 try {
-                    withTimeout(timeout) {
+                    withThrowingTimeout(timeout) {
                         readChannel.receive()
                     }
                 } catch (e: ConnectException) {

@@ -2,58 +2,56 @@ package matt.socket.reader
 
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.channels.ClosedReceiveChannelException
-import kotlinx.serialization.serializer
+import kotlinx.serialization.KSerializer
 import matt.lang.idea.FailableIdea
 import matt.log.j.NOPLogger
 import matt.log.logger.Logger
-import matt.model.data.message.InterAppMessage
 import matt.socket.ktor.KtorSocketConnection
 import matt.stream.encoding.Encoding
 import matt.stream.encoding.reader.message.SuspendingMessageReader
 import matt.stream.encoding.result.MessageFailureReason
 
+
+/*terrible naming! sounds like launch, but it executes in place and the coroutine does not advance... so it needs to be inside another launch...*/
 context(CoroutineScope)
-suspend fun <R> KtorSocketConnection.launchNewSocketReader(
+suspend fun <T: Any, R> KtorSocketConnection.launchNewSocketReader(
     encoding: Encoding,
     logger: Logger = NOPLogger,
-    op: suspend NewSocketReaderDsl.() -> R
+    serializer: KSerializer<T>,
+    op: suspend NewSocketReaderDsl<T>.() -> R
 ): R =
     NewSocketReaderImpl(
         this,
         readScope = this@CoroutineScope,
         encoding,
-        log = logger
+        log = logger,
+        serializer = serializer
     ).op()
 
 
-interface NewSocketReaderDsl {
-    suspend fun readMessage(): InterAppPossibleMessageResult
+interface NewSocketReaderDsl<T: Any> {
+    suspend fun readMessage(): InterAppPossibleMessageResult<T>
 }
 
-sealed interface InterAppPossibleMessageResult: FailableIdea
-sealed interface InterAppMessageResult: InterAppPossibleMessageResult
-data object NoMessage: InterAppPossibleMessageResult
-class Success(val message: InterAppMessage): InterAppMessageResult
+sealed interface InterAppPossibleMessageResult<out T: Any>: FailableIdea
+sealed interface InterAppMessageResult<out T: Any>: InterAppPossibleMessageResult<T>
+data object NoMessage: InterAppPossibleMessageResult<Nothing>
+class Success<T: Any>(val message: T): InterAppMessageResult<T>
+class MessageReceptionFailure(val reason: MessageFailureReason): InterAppMessageResult<Nothing>
 
-
-
-
-
-
-class MessageReceptionFailure(val reason: MessageFailureReason): InterAppMessageResult
-
-private class NewSocketReaderImpl(
+private class NewSocketReaderImpl<T: Any>(
     connection: KtorSocketConnection,
     readScope: CoroutineScope,
     encoding: Encoding,
-    log: Logger = NOPLogger
-) : SuspendingMessageReader<InterAppMessage>(
+    log: Logger = NOPLogger,
+    serializer: KSerializer<T>
+) : SuspendingMessageReader<T>(
         encoding,
         connection,
-        serializer<InterAppMessage>(),
+        serializer,
         log
     ),
-    NewSocketReaderDsl {
+    NewSocketReaderDsl<T> {
 
     private val messageChannel by lazy {
         with(readScope) {
@@ -61,7 +59,7 @@ private class NewSocketReaderImpl(
         }
     }
 
-    override suspend fun readMessage(): InterAppPossibleMessageResult {
+    override suspend fun readMessage(): InterAppPossibleMessageResult<T> {
 
         val sectionResult =
             try {

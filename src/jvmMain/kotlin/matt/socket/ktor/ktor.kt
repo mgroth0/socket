@@ -21,12 +21,12 @@ import io.ktor.utils.io.writeStringUtf8
 import kotlinx.coroutines.CoroutineScope
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.launch
-import kotlinx.coroutines.withTimeout
 import kotlinx.coroutines.withTimeoutOrNull
 import kotlinx.io.Buffer
 import kotlinx.io.asSink
 import kotlinx.io.asSource
 import kotlinx.io.bytestring.ByteString
+import matt.async.co.withThrowingTimeout
 import matt.lang.common.LOCALHOST
 import matt.lang.safeconvert.verifyToInt
 import matt.prim.bytestr.byteString
@@ -51,7 +51,7 @@ typealias ConnectionOp = suspend KtorSocketConnection.() -> Unit
 
 abstract class SocketScope : CoroutineScope {
     abstract val manager: SelectorManager /*should be abstract protected!!!!!*/
-    final suspend fun <R> server(
+    suspend fun <R> server(
         port: Port,
         op: suspend KtorServerSocket.() -> R
     ): R {
@@ -66,7 +66,7 @@ abstract class SocketScope : CoroutineScope {
     }
 
 
-    final suspend fun <R> client(
+    suspend fun <R> client(
         port: Port,
         op: ConnectionReturningOp<R>
     ): R {
@@ -175,9 +175,10 @@ private class KtorServerSocketImpl(port: Port) : KtorSocket(), KtorServerSocket 
         op: ConnectionReturningOp<R>
     ): R {
         val rawConnection =
-            withTimeout(timeout) {
+            withThrowingTimeout(timeout) {
                 socket.accept()
             }
+
         return handleReturningConnection(rawConnection, op)
     }
     override suspend fun <R: Any> acceptOrNull(

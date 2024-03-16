@@ -7,6 +7,11 @@
       "path": ":k:shell"
     },
     {
+      "type": "Project",
+      "cfg": "jvmMainApi",
+      "path": ":k:async:co"
+    },
+    {
       "type": "Lib",
       "cfg": "jvmMainApi",
       "key": "kotlinx-io"
